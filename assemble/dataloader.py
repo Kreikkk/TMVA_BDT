@@ -51,7 +51,3 @@ def extract():
 	BDataframe = selection(BDataframe)
 
 	return SDataframe, BDataframe
-
-a, b = extract()
-
-print(a)
