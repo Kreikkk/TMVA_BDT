@@ -59,6 +59,8 @@ def main():
 	dataloader.AddVariable("sinDeltaPhiJJOver2","F")
 	dataloader.AddVariable("deltaYJPh","F")
 
+	dataloader.AddSpectator("weightModified", "F")
+
 	cut = root.TCut("(nJets > 1)&&(nLeptons == 0)")
 
 	dataloader.PrepareTrainingAndTestTree(cut, ":".join(["nTrain_Signal=0",

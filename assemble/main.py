@@ -25,6 +25,8 @@ def build_reader(model_id):
 	var_nJets 				= array('f',[0])
 	var_sinDeltaPhiJJOver2 	= array('f',[0])
 	var_deltaYJPh 			= array('f',[0])
+	var_weightModified 		= array('f',[0])
+
 
 	reader.AddVariable("mJJ",				var_mJJ)
 	reader.AddVariable("deltaYJJ",			var_deltaYJJ)
@@ -37,15 +39,18 @@ def build_reader(model_id):
 	reader.AddVariable("nJets",				var_nJets)
 	reader.AddVariable("sinDeltaPhiJJOver2",var_sinDeltaPhiJJOver2)
 	reader.AddVariable("deltaYJPh",			var_deltaYJPh)
+	reader.AddSpectator("weightModified",	var_weightModified)
+
 
 	reader.BookMVA(METHODNAME, WEIGHTSPATH)
 
 	SDataframe, BDataframe = extract_from_output()
-	SDataframe["BDToutput"] = 0.0
-	BDataframe["BDToutput"] = 0.0
+	SDataframe["BDToutput"] = 0
+	BDataframe["BDToutput"] = 0
+
 	print("Веса до применения классификатора:")
-	print(np.sum(SDataframe["weight"]))
-	print(np.sum(BDataframe["weight"]))
+	print(np.sum(SDataframe["weightModified"]))
+	print(np.sum(BDataframe["weightModified"]))
 
 	output = []
 	for i, row in SDataframe.iterrows():
@@ -79,8 +84,8 @@ def build_reader(model_id):
 		output.append(reader.EvaluateMVA("BDTgrad"))
 	BDataframe["BDToutput"] = output
 
-	SHist = root.TH1F("", "", 50, 0, 1)
-	BHist = root.TH1F("", "", 50, 0, 1)
+	SHist = root.TH1F("", "", 50, -1, 1)
+	BHist = root.TH1F("", "", 50, -1, 1)
 
 	BHist.SetStats(False)
 	SHist.SetStats(False)
@@ -106,9 +111,9 @@ def build_reader(model_id):
 	SHist.SetMinimum(0)
 
 
-	for out, weight in zip(SDataframe["BDToutput"], SDataframe["weight"]):
+	for out, weight in zip(SDataframe["BDToutput"], SDataframe["weightModified"]):
 		SHist.Fill(out, weight)
-	for out, weight in zip(BDataframe["BDToutput"], BDataframe["weight"]):
+	for out, weight in zip(BDataframe["BDToutput"], BDataframe["weightModified"]):
 		BHist.Fill(out, weight)
 
 	aplt.set_atlas_style()
@@ -145,38 +150,38 @@ def make_selections(SDataframe, BDataframe):
 	ROC_SIG = []
 	ROC_BG = []
 
-	initS = sum(SDataframe["weight"])
-	initB = sum(BDataframe["weight"])
+	initS = sum(SDataframe["weightModified"])
+	initB = sum(BDataframe["weightModified"])
 
 	cursor = Min
 	plot_data = [[],[]]
 	while cursor <= Max:
-		S = sum(SDataframe[SDataframe["BDToutput"] > cursor]["weight"])
-		B = sum(BDataframe[BDataframe["BDToutput"] > cursor]["weight"])
+		S = sum(SDataframe[SDataframe["BDToutput"] > cursor]["weightModified"])
+		B = sum(BDataframe[BDataframe["BDToutput"] > cursor]["weightModified"])
 
 		ROC_SIG.append(S)
 		ROC_BG.append(B)
 
 		plot_data[0].append(cursor)
-		plot_data[1].append(S/(S+B)**0.5)
+		plot_data[1].append((S/(S+B)**0.5)*(2**0.5))
 		cursor += BDTSTEP
 
 	ROC(ROC_SIG, ROC_BG, initS, initB, model_id)
 
 	peak = max(enumerate(plot_data[1]), key=lambda x: x[1])
-	meta = {"initS": round(sum(SDataframe["weight"])),
-			"initB": round(sum(BDataframe["weight"])),
+	meta = {"initS": round(sum(SDataframe["weightModified"])),
+			"initB": round(sum(BDataframe["weightModified"])),
 			"peak": (peak[1], plot_data[0][peak[0]])}
 	plot_data.append(meta)
 	
 	a = SDataframe[SDataframe["BDToutput"] > plot_data[0][peak[0]]]
 	b = BDataframe[BDataframe["BDToutput"] > plot_data[0][peak[0]]]
 	print("Significance error:")
-	print(error(np.array(a["weight"]), np.array(b["weight"])))
+	print(error(np.array(a["weightModified"]), np.array(b["weightModified"])))
 
 	print("Веса после применения классификатора:")
-	print(np.sum(np.array(a["weight"])))
-	print(np.sum(np.array(b["weight"])))
+	print(np.sum(np.array(a["weightModified"])))
+	print(np.sum(np.array(b["weightModified"])))
 
 	return plot_data
 
@@ -277,6 +282,6 @@ def ROC(ROC_SIG, ROC_BG, initS, initB, model_id):
 
 if __name__ == "__main__":
 	root.TMVA.Tools.Instance()
-	model_id = input("ID: ")
+	model_id = "test_no_big_W1"
 	plot_data = build_reader(model_id)
 	plot(plot_data, model_id)

@@ -65,7 +65,7 @@ def build_output_dataframe(tree):
 							  "nJets":			pd.Series(np.array(tree["nJets"].array())),
 							  "sinDeltaPhiJJOver2": pd.Series(np.array(tree["sinDeltaPhiJJOver2"].array())),
 							  "deltaYJPh":		pd.Series(np.array(tree["deltaYJPh"].array())),
-							  "weight":			pd.Series(np.array(tree["weight"].array())),
+							  "weightModified":	pd.Series(np.array(tree["weightModified"].array())),
 							  "classID":		pd.Series(np.array(tree["classID"].array())),
 							 })
 	return dataframe
@@ -77,15 +77,19 @@ def extract_from_output(output_type="test"):
 	if output_type == "test":
 		Tree 		= directory["TestTree"]
 		Dataframe 	= build_output_dataframe(Tree)
-		SDataframe 	= Dataframe[Dataframe["classID"] == 0].copy()
-		BDataframe 	= Dataframe[Dataframe["classID"] == 1].copy()
+		SDataframe 	= Dataframe[Dataframe["classID"] == 0]
+		BDataframe 	= Dataframe[Dataframe["classID"] == 1]
+
+		BDataframe = BDataframe[BDataframe["weightModified"] < 2.5]
+
 		return SDataframe, BDataframe
 
 	elif output_type == "train":
 		Tree 		= directory["TrainTree"]
 		Dataframe 	= build_output_dataframe(Tree)
-		SDataframe 	= Dataframe[Dataframe["classID"] == 0].copy()
-		BDataframe 	= Dataframe[Dataframe["classID"] == 1].copy()
+		SDataframe 	= Dataframe[Dataframe["classID"] == 0]
+		BDataframe 	= Dataframe[Dataframe["classID"] == 1]
+
 		return SDataframe, BDataframe
 
 	else:
@@ -103,3 +107,7 @@ def error(signal_events, bg_events):
 	BPart = -0.5*S*((S + B)**(-1.5))
 
 	return ((SPart*SErr)**2 + (BPart*BErr)**2)**0.5
+
+
+if __name__ == "__main__":
+	pass

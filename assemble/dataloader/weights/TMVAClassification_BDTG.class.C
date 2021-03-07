@@ -10,9 +10,9 @@ Method         : BDT::BDTG
 TMVA Release   : 4.2.1         [262657]
 ROOT Release   : 6.22/06       [398854]
 Creator        : konstantin
-Date           : Sat Mar  6 18:57:07 2021
+Date           : Sun Mar  7 20:53:56 2021
 Host           : Linux mach 5.8.0-43-generic #49~20.04.1-Ubuntu SMP Fri Feb 5 09:57:56 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
-Dir            : /home/konstantin/Projects/CERN/BDT/assemble
+Dir            : /home/konstantin/Projects/CERN/TMVA_BDT/assemble
 Training events: 264807
 Analysis type  : [Classification]
 
@@ -82,7 +82,8 @@ ptBalanceRed                  ptBalanceRed                  ptBalanceRed        
 nJets                         nJets                         nJets                         nJets                                                           'F'    [2,8]
 sinDeltaPhiJJOver2            sinDeltaPhiJJOver2            sinDeltaPhiJJOver2            sinDeltaPhiJJOver2                                              'F'    [1.5914440155e-05,1]
 deltaYJPh                     deltaYJPh                     deltaYJPh                     deltaYJPh                                                       'F'    [3.61310810604e-07,6.68952894211]
-NSpec 0
+NSpec 1
+weightModified                weightModified                weightModified                F                                                               'F'    [-0.25676164031,3.33227348328]
 
 
 ============================================================================ */
