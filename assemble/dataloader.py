@@ -43,11 +43,63 @@ def extract():
 									   "sinDeltaPhiJJOver2", "deltaYJPh", "phCentrality", 
 									   "weightModified", "nLeptons"])
 	for filename in BFILENAMES:
-		BFile = uproot.open("source/"+filename)
-		BTree = BFile[TREENAME]
+		BFile 	= uproot.open("source/"+filename)
+		BTree 	= BFile[TREENAME]
 		BDataframe = BDataframe.append(build_dataframe(BTree), ignore_index=True)
 
 	SDataframe = selection(SDataframe)
 	BDataframe = selection(BDataframe)
 
 	return SDataframe, BDataframe
+
+
+def build_output_dataframe(tree):
+	dataframe = pd.DataFrame({"mJJ":			pd.Series(np.array(tree["mJJ"].array())),
+							  "deltaYJJ":		pd.Series(np.array(tree["deltaYJJ"].array())),
+							  "metPt":			pd.Series(np.array(tree["metPt"].array())),
+							  "ptBalance":		pd.Series(np.array(tree["ptBalance"].array())),
+							  "subleadJetEta":	pd.Series(np.array(tree["subleadJetEta"].array())),
+							  "leadJetPt":		pd.Series(np.array(tree["leadJetPt"].array())),
+							  "photonEta":		pd.Series(np.array(tree["photonEta"].array())),
+							  "ptBalanceRed":	pd.Series(np.array(tree["ptBalanceRed"].array())),
+							  "nJets":			pd.Series(np.array(tree["nJets"].array())),
+							  "sinDeltaPhiJJOver2": pd.Series(np.array(tree["sinDeltaPhiJJOver2"].array())),
+							  "deltaYJPh":		pd.Series(np.array(tree["deltaYJPh"].array())),
+							  "weight":			pd.Series(np.array(tree["weight"].array())),
+							  "classID":		pd.Series(np.array(tree["classID"].array())),
+							 })
+	return dataframe
+
+
+def extract_from_output(output_type="test"):
+	file 		= uproot.open("output.root")
+	directory 	= file["dataloader"]
+	if output_type == "test":
+		Tree 		= directory["TestTree"]
+		Dataframe 	= build_output_dataframe(Tree)
+		SDataframe 	= Dataframe[Dataframe["classID"] == 0].copy()
+		BDataframe 	= Dataframe[Dataframe["classID"] == 1].copy()
+		return SDataframe, BDataframe
+
+	elif output_type == "train":
+		Tree 		= directory["TrainTree"]
+		Dataframe 	= build_output_dataframe(Tree)
+		SDataframe 	= Dataframe[Dataframe["classID"] == 0].copy()
+		BDataframe 	= Dataframe[Dataframe["classID"] == 1].copy()
+		return SDataframe, BDataframe
+
+	else:
+		raise Exception("Wrong output type")
+
+
+def error(signal_events, bg_events):
+	S = np.sum(signal_events)
+	B = np.sum(bg_events)
+
+	SErr = np.sum(signal_events**2)**0.5
+	BErr = np.sum(bg_events**2)**0.5
+
+	SPart = (S + B)**(-0.5) - 0.5*S*((S + B)**(-1.5))
+	BPart = -0.5*S*((S + B)**(-1.5))
+
+	return ((SPart*SErr)**2 + (BPart*BErr)**2)**0.5
