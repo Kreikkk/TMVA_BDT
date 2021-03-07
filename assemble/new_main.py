@@ -12,8 +12,6 @@ from dataloader import extract_from_output, error
 
 
 def build_reader(model_id):
-	reader = root.TMVA.Reader("reader")
-
 	var_mJJ 				= array('f',[0])
 	var_deltaYJJ 			= array('f',[0])
 	var_metPt 				= array('f',[0])
@@ -27,7 +25,7 @@ def build_reader(model_id):
 	var_deltaYJPh 			= array('f',[0])
 	var_weightModified 		= array('f',[0])
 
-
+	reader = root.TMVA.Reader("reader")
 	reader.AddVariable("mJJ",				var_mJJ)
 	reader.AddVariable("deltaYJJ",			var_deltaYJJ)
 	reader.AddVariable("metPt",				var_metPt)
@@ -40,7 +38,6 @@ def build_reader(model_id):
 	reader.AddVariable("sinDeltaPhiJJOver2",var_sinDeltaPhiJJOver2)
 	reader.AddVariable("deltaYJPh",			var_deltaYJPh)
 	reader.AddSpectator("weightModified",	var_weightModified)
-
 
 	reader.BookMVA(METHODNAME, WEIGHTSPATH)
 
@@ -78,32 +75,32 @@ def build_reader(model_id):
 		output.append(reader.EvaluateMVA("BDTgrad"))
 	BDataframe["BDToutput"] = output
 
+	return SDataframe, BDataframe
+
+
+def BDT_output_hist(SDataframe, BDataframe):
 	SHist = root.TH1F("", "", 50, -1, 1)
 	BHist = root.TH1F("", "", 50, -1, 1)
 
-	BHist.SetStats(False)
 	SHist.SetStats(False)
-	BHist.SetLineWidth(2)	
+	BHist.SetStats(False)
+	SHist.SetMinimum(0)
+	BHist.SetMinimum(0)
+	SHist.SetLineWidth(2)
+	BHist.SetLineWidth(2)
+	SHist.SetLineColor(4)
 	BHist.SetLineColor(2)
+	
 	BHist.SetFillColor(2)
 	BHist.SetFillStyle(3004)
 
-	BHist.GetXaxis().CenterTitle()
 	BHist.GetYaxis().SetTitle("Fraction of events")
-	BHist.GetYaxis().CenterTitle()
-	BHist.GetXaxis().SetTitleOffset(1.2)
-	BHist.SetMinimum(0)
-
-	SHist.SetLineWidth(2)
-	SHist.SetLineColor(4)
-	SHist.SetFillColorAlpha(4, 0.2)
-
-	SHist.GetXaxis().CenterTitle()
 	SHist.GetYaxis().SetTitle("Fraction of events")
-	SHist.GetYaxis().CenterTitle()
-	SHist.GetXaxis().SetTitleOffset(1.2)
-	SHist.SetMinimum(0)
+	# BHist.GetXaxis().SetTitleOffset(1.2)
 
+
+	SHist.SetFillColorAlpha(4, 0.2)
+	# SHist.GetXaxis().SetTitleOffset(1.2)
 
 	for out, weight in zip(SDataframe["BDToutput"], SDataframe["weightModified"]):
 		SHist.Fill(out, weight)
@@ -134,8 +131,7 @@ def build_reader(model_id):
 
 	# input()
 
-	return make_selections(SDataframe, BDataframe)
-
+	return make_selections(SDataframe, BDataframe)	
 
 def make_selections(SDataframe, BDataframe):
 	Min = max(min(SDataframe["BDToutput"]), min(BDataframe["BDToutput"]))
