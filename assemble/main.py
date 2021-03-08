@@ -113,8 +113,8 @@ def build_reader(model_id):
 	aplt.set_atlas_style()
 	fig, ax = aplt.subplots(1, 1, name="fig1", figsize=(800, 600))
 	#####################################
-	ax.plot(SHist, "E1")
-	ax.plot(BHist, "E1")
+	ax.plot(SHist, [-1, 1, 0, 0.15], "E1")
+	ax.plot(BHist, [-1, 1, 0, 0.15], "E1")
 	######################################
 	ax.add_margins(top=0.16)
 	# ax.add_margins(top=0.2)

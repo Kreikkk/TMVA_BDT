@@ -9,9 +9,10 @@ from array import array
 
 from config import *
 from dataloader import extract_from_output, error
+from helpers import get_hist_max
 
 
-def build_reader(model_id):
+def build_reader():
 	var_mJJ 				= array('f',[0])
 	var_deltaYJJ 			= array('f',[0])
 	var_metPt 				= array('f',[0])
@@ -20,7 +21,7 @@ def build_reader(model_id):
 	var_leadJetPt 			= array('f',[0])
 	var_photonEta 			= array('f',[0])
 	var_ptBalanceRed 		= array('f',[0])
-	var_nJets 				= array('f',[0])
+	var_nJets 				= array('f',[0])	
 	var_sinDeltaPhiJJOver2 	= array('f',[0])
 	var_deltaYJPh 			= array('f',[0])
 	var_weightModified 		= array('f',[0])
@@ -42,6 +43,7 @@ def build_reader(model_id):
 	reader.BookMVA(METHODNAME, WEIGHTSPATH)
 
 	SDataframe, BDataframe = extract_from_output()
+	BDataframe = BDataframe[BDataframe["weightModified"] < 1]
 
 	output = []
 	for i, row in SDataframe.iterrows():
@@ -78,7 +80,7 @@ def build_reader(model_id):
 	return SDataframe, BDataframe
 
 
-def BDT_output_hist(SDataframe, BDataframe):
+def BDT_output_hist_plot(SDataframe, BDataframe, model_id=""):
 	SHist = root.TH1F("", "", 50, -1, 1)
 	BHist = root.TH1F("", "", 50, -1, 1)
 
@@ -91,34 +93,28 @@ def BDT_output_hist(SDataframe, BDataframe):
 	SHist.SetLineColor(4)
 	BHist.SetLineColor(2)
 	
+	SHist.SetFillColorAlpha(4, 0.2)
 	BHist.SetFillColor(2)
 	BHist.SetFillStyle(3004)
-
-	BHist.GetYaxis().SetTitle("Fraction of events")
-	SHist.GetYaxis().SetTitle("Fraction of events")
-	# BHist.GetXaxis().SetTitleOffset(1.2)
-
-
-	SHist.SetFillColorAlpha(4, 0.2)
-	# SHist.GetXaxis().SetTitleOffset(1.2)
 
 	for out, weight in zip(SDataframe["BDToutput"], SDataframe["weightModified"]):
 		SHist.Fill(out, weight)
 	for out, weight in zip(BDataframe["BDToutput"], BDataframe["weightModified"]):
 		BHist.Fill(out, weight)
 
+	hists_max = np.max((get_hist_max(SHist, 50),
+						get_hist_max(BHist, 50)))
+	margins = [-1, 1, 0, hists_max]
+
 	aplt.set_atlas_style()
-	fig, ax = aplt.subplots(1, 1, name="fig1", figsize=(800, 600))
-	#####################################
-	ax.plot(SHist, "E1")
-	ax.plot(BHist, "E1")
-	######################################
-	ax.add_margins(top=0.16)
-	# ax.add_margins(top=0.2)
 
-	ax.set_xlabel(f"BDTgrad{model_id} classifier response")
+	fig, ax = aplt.subplots(1, 1, name="", figsize=(800, 600))
+	ax.plot(SHist, margins, "E1")
+	ax.plot(BHist, margins, "E1")
+	ax.add_margins(top=0.1)
+
+	ax.set_xlabel(f"BDTgrad_{model_id} classifier response")
 	ax.set_ylabel("Fraction of events")
-
 	ax.text(0.2, 0.92, "#sqrt{s} = 13 TeV, 139 fb^{-1}", size=27, align=13)
 
 	legend = root.TLegend(0.65, 0.8, 0.95, 0.92)
@@ -127,15 +123,71 @@ def BDT_output_hist(SDataframe, BDataframe):
 	legend.AddEntry(BHist, "Background", "F")
 	legend.Draw()
 
-	fig.savefig(f"BDTgrad{model_id}output.pdf")
+	fig.savefig(f"BDTgrad_{model_id}_output.pdf")
 
-	# input()
 
-	return make_selections(SDataframe, BDataframe)	
+def significance_plot(SDataframe, BDataframe, ratio, ndots=1000, model_id=""):
+	Min = np.max((np.min(SDataframe["BDToutput"]), np.min(BDataframe["BDToutput"])))
+	Max = np.min((np.max(SDataframe["BDToutput"]), np.max(BDataframe["BDToutput"])))
+
+	XData = np.linspace(Min, Max, ndots)
+	YData = np.array([])
+	for cursor in XData:
+		S = np.sum(SDataframe[SDataframe["BDToutput"] >= cursor]["weightModified"])
+		B = np.sum(BDataframe[BDataframe["BDToutput"] >= cursor]["weightModified"])
+		YData = np.append(YData, S/np.sqrt(ratio*(S+B)))
+
+	XPlot, YPlot = array("d"), array("d")
+	for x, y in zip(XData, YData):
+		XPlot.append(x)
+		YPlot.append(y)
+
+	curve = root.TGraph(ndots, XPlot, YPlot)
+	curve.SetLineColor(2)
+
+	curve.SetLineWidth(2)
+	curve.SetMarkerColor(2)
+	curve.SetMarkerSize(0)
+	curve.GetXaxis().SetRangeUser(-1, 1)
+	curve.GetXaxis().SetTitle(f"Cut value applied on BDTgrad{model_id} output")
+	curve.GetYaxis().SetTitle('Significance')
+	aplt.set_atlas_style()
+	fig, ax = aplt.subplots(1, 1, name="", figsize=(800, 600))
+	ax.plot(curve)
+
+	ax.add_margins(top=0.16)
+	ax.set_xlabel(f"Cut value applied on BDTgrad{model_id} output")
+	ax.set_ylabel("Significance")
+
+	peak_index = YData.argmax()
+	cut = XData[peak_index]
+	sig_max = YData[peak_index]
+
+	ax.text(0.2, 0.92, "#sqrt{s} = 13 TeV, 139 fb^{-1}", size=27, align=13)
+
+	text1 = "For {} signal and {} background".\
+		format(round(np.sum(SDataframe["weightModified"])),
+			   round(np.sum(BDataframe["weightModified"])))
+
+	text2 = "events the maximum {} is".format("S/#sqrt{S+B}")
+	text3 = "{} when cutting at {}".format(round(sig_max, 3),
+										   round(cut, 3))
+
+	ax.text(0.2, 0.3, text1, size=20, align=13)
+	ax.text(0.2, 0.27, text2, size=20, align=13)
+	ax.text(0.2, 0.22, text3, size=20, align=13)
+
+	line = root.TLine(cut, 0, cut, 4)
+	line.SetLineStyle(10)
+	line.SetLineColor(6)
+	ax.plot(line)
+
+	fig.savefig(f"BDTgrad_{model_id}_outputCut.pdf")
+
 
 def make_selections(SDataframe, BDataframe):
-	Min = max(min(SDataframe["BDToutput"]), min(BDataframe["BDToutput"]))
-	Max = min(max(SDataframe["BDToutput"]), max(BDataframe["BDToutput"]))
+	Min = max((min(SDataframe["BDToutput"]), min(BDataframe["BDToutput"])))
+	Max = min((max(SDataframe["BDToutput"]), max(BDataframe["BDToutput"])))
 
 	ROC_SIG = []
 	ROC_BG = []
@@ -188,9 +240,6 @@ def plot(plot_data, model_id):
 	curve.SetMarkerColor(2)
 	curve.SetMarkerSize(0)
 	curve.GetXaxis().SetRangeUser(-1, 1)
-	curve.GetXaxis().SetTitle(f"Cut value applied on BDTgrad{model_id} output")
-	curve.GetYaxis().SetTitle('Significance')
-	# print(dir(curve))
 	fig, ax = aplt.subplots(1, 1, name="fig2", figsize=(800, 600))
 	ax.plot(curve)
 
@@ -220,7 +269,7 @@ def plot(plot_data, model_id):
 	ax.plot(line)
 
 	fig.canvas.SetGrid()
-	fig.savefig(f"BDTgrad{model_id}outputCut.pdf")
+	fig.savefig(f"BDTgrad {model_id} outputCut.pdf")
 
 	# input()
 
@@ -272,6 +321,9 @@ def ROC(ROC_SIG, ROC_BG, initS, initB, model_id):
 
 if __name__ == "__main__":
 	root.TMVA.Tools.Instance()
-	model_id = "test_no_big_W1"
-	plot_data = build_reader(model_id)
-	plot(plot_data, model_id)
+	# model_id = "test_no_big_W1"
+	# plot_data = build_reader(model_id)
+	# plot(plot_data, model_id)
+	SDataframe, BDataframe = build_reader()
+	# BDT_output_hist_plot(SDataframe, BDataframe)
+	significance_plot(SDataframe, BDataframe, ratio=0.5)
